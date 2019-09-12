@@ -10,9 +10,22 @@
 # bits.
 #
 # By default this script does nothing.
+
 # Print the IP address
 _IP=$(hostname -I) || true
 if [ "$_IP" ]; then
- printf "My IP address is %s\n" "$_IP"
+  printf "My IP address is %s\n" "$_IP"
 fi
+
+#Always Start ServoBlaster 
+sudo ./home/pi/ServoBlaster/user/servod --pcm
+
+# Now, start either (1) the controller driver "pygame" or the "Robocup" script
+# The Robocup script shows how we can send commands to the SimPlat
+# Script 1: Start the STEM pygame controller
+python ./home/pi/pygame/pygame_control_r2.py &
+
+# Script 2: Start Robocup
+#python ./home/pi/robot/Robot_r4.py &
+
 exit 0
