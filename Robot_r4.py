@@ -1,123 +1,83 @@
-{\rtf1\ansi\ansicpg1252\cocoartf1671\cocoasubrtf500
-{\fonttbl\f0\fmodern\fcharset0 CourierNewPSMT;}
-{\colortbl;\red255\green255\blue255;\red255\green255\blue255;\red0\green0\blue0;}
-{\*\expandedcolortbl;;\cssrgb\c100000\c100000\c100000;\cssrgb\c0\c0\c0;}
-\margl1440\margr1440\vieww10800\viewh8400\viewkind0
-\deftab720
-\pard\pardeftab720\partightenfactor0
+'''
+This module is controls the servos on the robot.  It is listening for commands on the
+given port for commands.  The command are unit vectors in the format 'y,x,r' where x and y
+are unit vectors that describe the move and r is rotate.  Forward = -Y, Right = X, CW = >0.
 
-\f0\fs28 \cf2 \cb2 \expnd0\expndtw0\kerning0
-'''\
-This code will listen for events from a controller connected to the robot.\
-\
-                F = (-1,0,0)\
-              Servo 0, Axis 1\
-(-0.707,-0.707,0)    ^     (-0.707,0.707,0)\
-                 \\   |    /\
-                   -----\
-    L = (0,-1,0)  |     |  R = (0,1,0)\
-  Servo 1, Axis 0 |     | Servo 3, Axis 0\
-                   -----\
-                 /       \\\
- (0.707,-0.707,0)         (0.707,0.707,0)\
-                B = (1,0,0)\
-              Servo 2, Axis 1\
-\
-		Rotate: Axis 3 (CCW -1, CW 1)\
-			  \
-Notes:				  \
- - Servo PWM signal ranges from full clockwise speed = 1300us, no movement = 1520us, full counter clockwise = 1700us\
- - Bluetooth connection notes: https://core-electronics.com.au/tutorials/using-usb-and-bluetooth-controllers-with-python.html\
- - Make sure that ServoBlaster is started with the --pcm flag (when using pygame)\
- - This script can be auto launched by adding it to the /etc/rc.local file\
-'''\
-\
-import pygame\
-from pygame import locals\
-import os\
-\
-pygame.init()\
-pygame.joystick.init() # main joystick device system\
-\
-try:\
-	j = pygame.joystick.Joystick(0) # create a joystick instance\
-	j.init() # init instance\
-	print 'Enabled joystick: ' + j.get_name()\
-	print '  Number of axis: ' + str(j.get_numaxes())\
-	print '  Number of buttons: ' + str(j.get_numbuttons())\
-except pygame.error:\
-	print 'no joystick found.'\
-	quit()\
-\
-deadband = 0.2		# This is used to provide a dead band for the controller\
-pwm_no_motion = 1520    # This is the pwm for no motion in us (1520us)\
-pwm_delta_full_speed = 180    # This is the pulse width that will be added/subtracted from the no motion pwm in us (180us)\
-\
-servo_0 = pwm_no_motion    # Initialize the servo pwm as no motion\
-servo_1 = pwm_no_motion    # Initialize the servo pwm as no motion\
-servo_2 = pwm_no_motion    # Initialize the servo pwm as no motion\
-servo_3 = pwm_no_motion    # Initialize the servo pwm as no motion\
-\
-servo_0p = pwm_no_motion    # Previous servo command\
-servo_1p = pwm_no_motion    # Previous servo command\
-servo_2p = pwm_no_motion    # Previous servo command\
-servo_3p = pwm_no_motion    # Previous servo command\
-	\
-while True:\
-	pygame.event.pump()\
-	\
-	a0,a1,a3 = j.get_axis(0), j.get_axis(1), j.get_axis(3)\
-	# keys = pygame.key.get_pressed()\
-	# print keys\
-	# if keys[K_ESCAPE]:\
-		# print 'Escape key'\
-	\
-	# a0,a1,a2,a3,a4,a5 = j.get_axis(0), j.get_axis(1), j.get_axis(2), j.get_axis(3), j.get_axis(4), j.get_axis(5)\
-	# print 'a0, a1, a2, a3, a4, a5 : ' + str(a0) +' , '+ str(a1)+' , '+ str(a2)+' , '+ str(a3)+' , '+ str(a4)+' , '+ str(a5)\
-	# print j.get_axis(0), j.get_axis(1), j.get_axis(3)\
-	\
-	if abs(a0)<=deadband:\
-		a0=0\
-	\
-	if abs(a1)<=deadband:\
-		a1=0\
-					\
-	if abs(a3)<=deadband:\
-		a3=0\
-		\
-	# print a0,a1,a3		\
-	\
-	if a3!=0:  # Rotation\
-		# print ('Rotate')\
-		servo_0 = int(pwm_no_motion + a3 * pwm_delta_full_speed)    # Determine the pwm for the desired motion\
-		servo_2 = int(pwm_no_motion + a3 * pwm_delta_full_speed)    # Determine the pwm for the desired motion\
-\
-		servo_1 = int(pwm_no_motion + a3 * pwm_delta_full_speed)    # Determine the pwm for the desired motion\
-		servo_3 = int(pwm_no_motion + a3 * pwm_delta_full_speed)    # Determine the pwm for the desired motion\
-		\
-	elif a0!=0 or a1!=0:  # Translation\
-		# print('Translate')\
-		servo_0 = int(pwm_no_motion + a0 * pwm_delta_full_speed)    # Determine the pwm for the desired motion\
-		servo_2 = int(pwm_no_motion - a0 * pwm_delta_full_speed)    # Determine the pwm for the desired motion\
-\
-		servo_1 = int(pwm_no_motion - a1 * pwm_delta_full_speed)    # Determine the pwm for the desired motion\
-		servo_3 = int(pwm_no_motion + a1 * pwm_delta_full_speed)    # Determine the pwm for the desired motion\
-	else:\
-		# print ('Stop')\
-		servo_0 = pwm_no_motion\
-		servo_1 = pwm_no_motion\
-		servo_2 = pwm_no_motion\
-		servo_3 = pwm_no_motion\
-			\
-\
-	# print servo_0,servo_1,servo_2,servo_3\
-	\
-	# print 'Servo 0:', servo_0\
-	# print 'Servo 1:', servo_1\
-	# print 'Servo 2:', servo_2\
-	# print 'Servo 3:', servo_3\
-\
-	os.system("echo 0=" + str(servo_0) + "us > /dev/servoblaster")\
-	os.system("echo 1=" + str(servo_1) + "us > /dev/servoblaster")\
-	os.system("echo 2=" + str(servo_2) + "us > /dev/servoblaster")\
-	os.system("echo 3=" + str(servo_3) + "us > /dev/servoblaster")}
+                 F = (-1,0)
+                  Servo 0
+  (-0.707,-0.707)    ^     (-0.707,0.707)
+                 \   |    /
+                   -----
+      L = (0,-1)  |     |  R = (0,1)
+       Servo 1    |     |   Servo 3
+                   -----
+                 /       \
+   (0.707,-0.707)         (0.707,0.707)
+                 B = (1,0)
+                  Servo 2
+          
+Servo PWM signal ranges from full clockwise speed = 1300us, no movement = 1520us, full counter clockwise = 1700us
+'''
+import socket, sys, os
+
+print "Listening for robot commands..." 
+
+HOST = ''    # Symbolic name meaning all available interfaces
+PORT = 50007    # Arbitrary non-privileged port
+
+pwm_no_motion = 1520    # This is the pwm for no motion in us (1520us)
+pwm_delta_full_speed = 180    # This is the pulse width that will be added/subtracted from the no motion pwm in us (180us)
+
+servo_0 = pwm_no_motion    # Initialize the servo pwm as no motion
+servo_1 = pwm_no_motion    # Initialize the servo pwm as no motion
+servo_2 = pwm_no_motion    # Initialize the servo pwm as no motion
+servo_3 = pwm_no_motion    # Initialize the servo pwm as no motion
+
+try:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((HOST, PORT))
+    s.listen(1)
+    
+except socket.error as msg:
+    s.close()
+    s = None
+
+if s is None:
+    print 'Could not open socket'
+    sys.exit(1)
+
+while 1:
+    conn, addr = s.accept()
+    print 'Connected by', addr
+
+    data = conn.recv(1024)
+    print 'Data:',data
+
+    if data.split(',')[2] != '0':    # This is a rotation
+        print('Rotate')
+        servo_0 = int(pwm_no_motion + float(data.split(',')[2]) * pwm_delta_full_speed)    # Determine the pwm for the desired motion
+        servo_2 = int(pwm_no_motion + float(data.split(',')[2]) * pwm_delta_full_speed)    # Determine the pwm for the desired motion
+
+        servo_1 = int(pwm_no_motion + float(data.split(',')[2]) * pwm_delta_full_speed)    # Determine the pwm for the desired motion
+        servo_3 = int(pwm_no_motion + float(data.split(',')[2]) * pwm_delta_full_speed)    # Determine the pwm for the desired motion
+        
+    else:    # This is a translation
+        print('Translate')
+        servo_0 = int(pwm_no_motion + float(data.split(',')[1]) * pwm_delta_full_speed)    # Determine the pwm for the desired motion
+        servo_2 = int(pwm_no_motion - float(data.split(',')[1]) * pwm_delta_full_speed)    # Determine the pwm for the desired motion
+
+        servo_1 = int(pwm_no_motion - float(data.split(',')[0]) * pwm_delta_full_speed)    # Determine the pwm for the desired motion
+        servo_3 = int(pwm_no_motion + float(data.split(',')[0]) * pwm_delta_full_speed)    # Determine the pwm for the desired motion
+    
+    print 'Servo 0:', servo_0
+    print 'Servo 1:', servo_1
+    print 'Servo 2:', servo_2
+    print 'Servo 3:', servo_3
+
+    os.system("echo 0=" + str(servo_0) + "us > /dev/servoblaster")
+    os.system("echo 1=" + str(servo_1) + "us > /dev/servoblaster")
+    os.system("echo 2=" + str(servo_2) + "us > /dev/servoblaster")
+    os.system("echo 3=" + str(servo_3) + "us > /dev/servoblaster")
+
+print 'closing'
+conn.close()
