@@ -11,6 +11,9 @@ class simplat():
         self.y=0        
         self.joystick_x=0
         self.joystick_y=0
+        self.pwm_no_motion = 1520    # This is the pwm for no motion in us (1520us)
+        self.pwm_delta_full_speed = 180    # This is the pulse width that will be added/subtracted from the no motion pwm in us (180us)
+
     def update(self,joystick_x,joystick_y):
         import pygame
         from pygame import locals
@@ -18,8 +21,8 @@ class simplat():
         self.joystick_x=joystick_y
         self.joystick_y=joystick_x
 
-        self.pwm_no_motion =pwm_no_motion= 1520    # This is the pwm for no motion in us (1520us)
-        self.pwm_delta_full_speed =pwm_delta_full_speed= 180    # This is the pulse width that will be added/subtracted from the no motion pwm in us (180us)
+        pwm_no_motion =self.pwm_no_motion
+        pwm_delta_full_speed =self.pwm_delta_full_speed
 
         servo_0 = int(pwm_no_motion + self.x/100 * pwm_delta_full_speed)    # Determine the pwm for the desired motion
         servo_2 = int(pwm_no_motion - self.x/100 * pwm_delta_full_speed)    # Determine the pwm for the desired motion
@@ -117,33 +120,42 @@ def controller():
  
 from flask import Flask, render_template
 from flask_socketio import SocketIO
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
+@socketio.on('connect')
+def test_connect():
+    print("it got to here")
+    socketio.emit('my response', {'data': 'Connected'})
 
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
 @socketio.on('message')
 def handle_message(message):
-    print('received message: ' + message)
+    print('received message: ' + str(message))
 
-@socketio.on('EMERGENCY')
-def EMERGENCY(message):
+@app.route('/EMERGENCY')
+def EMERGENCY():
     import os
     os.system("echo 0=" + str(simplat.pwm_no_motion) + "us > /dev/servoblaster")
     os.system("echo 1=" + str(simplat.pwm_no_motion) + "us > /dev/servoblaster")
     os.system("echo 2=" + str(simplat.pwm_no_motion) + "us > /dev/servoblaster")
     os.system("echo 3=" + str(simplat.pwm_no_motion) + "us > /dev/servoblaster")
+    print("EMERGENCY STOP!!!!!!!")
+    return "EMERGENCY STOP!!!"
 @socketio.on('move')
-def move(x,y):
-    simplat.update(x,y)
-    print("X: "+ str(x) )
-    print("Y: "+ str(y) )
-@socketio.on('test')
-def test(x):
-    print("testing")
+def move(data):
+    print(data)
+    # simplat.update(data['x'],data['y'])
+    print("X: "+ str(data['x'] ))
+    print("Y: "+ str(data['y'] ))
 @app.route('/')
-def hello_world():
-    return 'Hello, World!'
+def homepage():
+    return '<h1>Welcome to the SIMPLAT</h1>'
 
 if __name__ == '__main__':
-    socketio.run(app)
+    socketio.run(app,host='0.0.0.0',debug='True')
