@@ -18,8 +18,8 @@ class simplat():
         self.joystick_x=joystick_y
         self.joystick_y=joystick_x
 
-        pwm_no_motion = 1520    # This is the pwm for no motion in us (1520us)
-        pwm_delta_full_speed = 180    # This is the pulse width that will be added/subtracted from the no motion pwm in us (180us)
+        self.pwm_no_motion =pwm_no_motion= 1520    # This is the pwm for no motion in us (1520us)
+        self.pwm_delta_full_speed =pwm_delta_full_speed= 180    # This is the pulse width that will be added/subtracted from the no motion pwm in us (180us)
 
         servo_0 = int(pwm_no_motion + self.x/100 * pwm_delta_full_speed)    # Determine the pwm for the desired motion
         servo_2 = int(pwm_no_motion - self.x/100 * pwm_delta_full_speed)    # Determine the pwm for the desired motion
@@ -38,7 +38,7 @@ class simplat():
 
     def __Servoblaster(self):
         formula=self.seconds*self.percent/100
-        print("formula "+str(formula))
+        # print("formula "+str(formula))
        
         self.joystick_x=formula*self.joystick_x
         self.joystick_y=formula*self.joystick_y
@@ -53,8 +53,8 @@ class simplat():
             self.x=100*self.x/abs(self.x)
         if(abs(self.y)>100):
             self.y=100*self.y/abs(self.y)
-        print("X: "+str(self.x))
-        print("Y: "+str(self.y)+" \n \n")
+        # print("X: "+str(self.x))
+        # print("Y: "+str(self.y)+" \n \n")
         
        
 
@@ -62,55 +62,88 @@ class simplat():
 
 simplat=simplat()
 
-import pygame
-from pygame import locals
-import os
+def controller():
+    import pygame
+    from pygame import locals
+    import os
 
-pygame.init()
-os.putenv('SDL_VIDEODRIVER', 'fbcon')
-pygame.display.init()
-pygame.joystick.init() # main joystick device system
-
-
-try:
-	j = pygame.joystick.Joystick(0) # create a joystick instance
-	j.init() # init instance
-	print ('Enabled joystick: ' + j.get_name())
-	print ('  Number of axis: ' + str(j.get_numaxes()))
-	print ('  Number of buttons: ' + str(j.get_numbuttons()))
-except pygame.error:
-	print ('no joystick found.')
-	quit()
-
-deadband = 0.2		# This is used to provide a dead band for the controller
+    pygame.init()
+    os.putenv('SDL_VIDEODRIVER', 'fbcon')
+    pygame.display.init()
+    pygame.joystick.init() # main joystick device system
 
 
-while True:
-    pygame.event.pump()
+    try:
+        j = pygame.joystick.Joystick(0) # create a joystick instance
+        j.init() # init instance
+        print ('Enabled joystick: ' + j.get_name())
+        print ('  Number of axis: ' + str(j.get_numaxes()))
+        print ('  Number of buttons: ' + str(j.get_numbuttons()))
+    except pygame.error:
+        print ('no joystick found.')
+        quit()
 
-    a0,a1,a3 = j.get_axis(0), j.get_axis(1), j.get_axis(3)
-   
+    deadband = 0.2		# This is used to provide a dead band for the controller
 
-    if abs(a0)<=deadband:
-        a0=0
 
-    if abs(a1)<=deadband:
-        a1=0
-                    
-    x=0
-    y=0
+    while True:
+        pygame.event.pump()
+
+        a0,a1,a3 = j.get_axis(0), j.get_axis(1), j.get_axis(3)
+    
+
+        if abs(a0)<=deadband:
+            a0=0
+
+        if abs(a1)<=deadband:
+            a1=0
+                        
+        x=0
+        y=0
+            
+        # print a0,a1,a3		
+        if(a0!=0 or a1!=0):
+            # print('Translate')
+            x = int(a0 * 100)    # Determine the pwm for the desired motion
+            y = int(a1 * 100)    # Determine the pwm for the desired motion
+
         
-    # print a0,a1,a3		
-    if(a0!=0 or a1!=0):
-        # print('Translate')
-        x = int(a0 * 100)    # Determine the pwm for the desired motion
-        y = int(a1 * 100)    # Determine the pwm for the desired motion
-
-      
-    else:
-        # print ('Stop')
-        x = 0
-        y = 0
-   
-    simplat.update(x,-y)
+        else:
+            # print ('Stop')
+            x = 0
+            y = 0
+    
+        simplat.update(x,-y)
  
+from flask import Flask, render_template
+from flask_socketio import SocketIO
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
+
+@socketio.on('message')
+def handle_message(message):
+    print('received message: ' + message)
+
+@socketio.on('EMERGENCY')
+def EMERGENCY(message):
+    import os
+    os.system("echo 0=" + str(simplat.pwm_no_motion) + "us > /dev/servoblaster")
+    os.system("echo 1=" + str(simplat.pwm_no_motion) + "us > /dev/servoblaster")
+    os.system("echo 2=" + str(simplat.pwm_no_motion) + "us > /dev/servoblaster")
+    os.system("echo 3=" + str(simplat.pwm_no_motion) + "us > /dev/servoblaster")
+@socketio.on('move')
+def move(x,y):
+    simplat.update(x,y)
+    print("X: "+ str(x) )
+    print("Y: "+ str(y) )
+@socketio.on('test')
+def test(x):
+    print("testing")
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
+
+if __name__ == '__main__':
+    socketio.run(app)
