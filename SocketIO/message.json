@@ -1,0 +1,6 @@
+{
+    "name": "socket-for-SimPlat",
+    "version": "0.0.1",
+    "description": "Sockets for RPi",
+    "dependencies": {}
+  }
