@@ -1,6 +1,16 @@
 class simplat():
+    
     def __init__(self):
         from apscheduler.schedulers.background import BackgroundScheduler
+        import logging
+
+        log = logging.getLogger('apscheduler.executors.default')
+        log.setLevel(logging.INFO)  # DEBUG
+
+        fmt = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+        h = logging.StreamHandler()
+        h.setFormatter(fmt)
+        log.addHandler(h)
 
         self.scheduler=BackgroundScheduler()
         self.seconds=0.5
